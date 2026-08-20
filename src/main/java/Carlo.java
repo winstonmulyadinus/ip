@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 /**
@@ -32,8 +34,7 @@ public class Carlo {
                 When you're done, just say 'bye'!
                 ____________________________________________________________
                 """;
-        Task[] tasks = new Task[100];
-        int taskCount = 0;
+        List<Task> tasks = new ArrayList<>();
 
         System.out.println(greeting);
 
@@ -44,29 +45,31 @@ public class Carlo {
 
                 System.out.println("____________________________________________________________");
                 try {
-                    if (taskCount == tasks.length) {
-                        throw new CarloException("Uh Oh! Uhm, my list is kinda full already...");
-                    }
-
                     if (command.equals("bye")) {
                         System.out.println(" Byeeee! Love always!");
                         System.out.println("____________________________________________________________");
                         break;
                     } else if (command.equals("list")) {
                         System.out.println(" Here's your list!");
-                        for (int i = 0; i < taskCount; i++) {
-                            System.out.println(" " + (i + 1) + "." + tasks[i]);
+                        for (int i = 0; i < tasks.size(); i++) {
+                            System.out.println(" " + (i + 1) + "." + tasks.get(i));
                         }
-                    } else if (command.startsWith("mark ")) {
-                        int taskIndex = getTaskIndex(command, "mark", taskCount);
-                        tasks[taskIndex].markAsDone();
+                    } else if (command.equals("mark") || command.startsWith("mark ")) {
+                        int taskIndex = getTaskIndex(command, "mark", tasks.size());
+                        tasks.get(taskIndex).markAsDone();
                         System.out.println(" YAY! thank you, next!");
-                        System.out.println("   " + tasks[taskIndex]);
-                    } else if (command.startsWith("unmark ")) {
-                        int taskIndex = getTaskIndex(command, "unmark", taskCount);
-                        tasks[taskIndex].markAsNotDone();
+                        System.out.println("   " + tasks.get(taskIndex));
+                    } else if (command.equals("unmark") || command.startsWith("unmark ")) {
+                        int taskIndex = getTaskIndex(command, "unmark", tasks.size());
+                        tasks.get(taskIndex).markAsNotDone();
                         System.out.println(" Awman... okay unmarked for now...");
-                        System.out.println("   " + tasks[taskIndex]);
+                        System.out.println("   " + tasks.get(taskIndex));
+                    } else if (command.equals("delete") || command.startsWith("delete ")) {
+                        int taskIndex = getTaskIndex(command, "delete", tasks.size());
+                        Task deletedTask = tasks.remove(taskIndex);
+                        System.out.println(" Okay okay, I've removed this task!");
+                        System.out.println("   " + deletedTask);
+                        System.out.println(" You now have " + tasks.size() + " tasks in your list!");
                     } else if (command.equals("todo") || command.startsWith("todo ")) {
                         String description = command.substring("todo".length()).trim();
 
@@ -74,20 +77,17 @@ public class Carlo {
                             throw new CarloException("hmm... there's nothing to do...");
                         }
 
-                        tasks[taskCount] = new Todo(command.substring(5));
-                        taskCount++;
-                        System.out.println(" added: " + tasks[taskCount - 1]);
-                        System.out.println(" You now have " + taskCount + " tasks in your list!");
+                        tasks.add(new Todo(description));
+                        System.out.println(" added: " + tasks.getLast());
+                        System.out.println(" You now have " + tasks.size() + " tasks in your list!");
                     } else if (command.equals("deadline") || command.startsWith("deadline ")) {
-                        tasks[taskCount] = createDeadline(command);
-                        taskCount++;
-                        System.out.println(" added: " + tasks[taskCount - 1]);
-                        System.out.println(" You now have " + taskCount + " tasks in your list!");
+                        tasks.add(createDeadline(command));
+                        System.out.println(" added: " + tasks.getLast());
+                        System.out.println(" You now have " + tasks.size() + " tasks in your list!");
                     } else if (command.equals("event") || command.startsWith("event ")) {
-                        tasks[taskCount] = createEvent(command);
-                        taskCount++;
-                        System.out.println(" added: " + tasks[taskCount - 1]);
-                        System.out.println(" You now have " + taskCount + " tasks in your list!");
+                        tasks.add(createEvent(command));
+                        System.out.println(" added: " + tasks.getLast());
+                        System.out.println(" You now have " + tasks.size() + " tasks in your list!");
                     } else {
                         throw new CarloException("I'm not too sure what you mean actually...");
                     }
