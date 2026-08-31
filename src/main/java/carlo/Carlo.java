@@ -1,18 +1,29 @@
-import java.util.ArrayList;
+package carlo;
+
+import carlo.exception.CarloException;
+import carlo.storage.Storage;
+import carlo.task.Deadline;
+import carlo.task.Event;
+import carlo.task.Task;
+import carlo.task.Todo;
+
 import java.util.List;
 import java.util.Scanner;
 
 /**
- * Provides a command-line task list that stores, displays, and marks tasks.
+ * Provides a command-line task list that stores, displays, and marks tasks,
+ * saving them to disk so that they persist between runs.
  */
 public class Carlo {
+    private static final String FILE_PATH = "./data/carlo.txt";
+
     /**
      * Starts the Carlo command-line application.
      *
      * @param args command-line arguments, which are not used
      */
     public static void main(String[] args) {
-        String greeting = """
+        final String GREETING = """
                 ____________________________________________________________
                   ██████╗                     \s
                  ██╔════╝                     \s
@@ -24,19 +35,22 @@ public class Carlo {
                   ╚══════╝╚═╝  ╚═╝╚═╝  ╚══════╝ ╚═════╝\s
                 Cheers! My name is Carlo!
                 I can help you to list down anything!
-                ____________________________________________________________
+                ____________________________________________________________""";
+        final String HELP = """
                 Input your items in order! ({task} {name} {time})
                     possible list items {task}:
                         "todo": tasks without any date/time attached
                         "deadline": for tasks that need to be done by a specific time (do specify using /by ___ )
                         "event": for tasks that start and end at specific times (do specify using /from ___ /to ___)
                 Say 'list' and I will show you your list!
-                When you're done, just say 'bye'!
-                ____________________________________________________________
-                """;
-        List<Task> tasks = new ArrayList<>();
+                When you're done, just say 'bye'!""";
 
-        System.out.println(greeting);
+        Storage storage = new Storage(FILE_PATH);
+        List<Task> tasks = storage.load();
+
+        System.out.println(GREETING);
+        System.out.println(HELP + "\n____________________________________________________________");
+
 
         try (Scanner scanner = new Scanner(System.in)) {
             while (scanner.hasNextLine()) {
@@ -57,16 +71,19 @@ public class Carlo {
                     } else if (command.equals("mark") || command.startsWith("mark ")) {
                         int taskIndex = getTaskIndex(command, "mark", tasks.size());
                         tasks.get(taskIndex).markAsDone();
+                        storage.save(tasks);
                         System.out.println(" YAY! thank you, next!");
                         System.out.println("   " + tasks.get(taskIndex));
                     } else if (command.equals("unmark") || command.startsWith("unmark ")) {
                         int taskIndex = getTaskIndex(command, "unmark", tasks.size());
                         tasks.get(taskIndex).markAsNotDone();
+                        storage.save(tasks);
                         System.out.println(" Awman... okay unmarked for now...");
                         System.out.println("   " + tasks.get(taskIndex));
                     } else if (command.equals("delete") || command.startsWith("delete ")) {
                         int taskIndex = getTaskIndex(command, "delete", tasks.size());
                         Task deletedTask = tasks.remove(taskIndex);
+                        storage.save(tasks);
                         System.out.println(" Okay okay, I've removed this task!");
                         System.out.println("   " + deletedTask);
                         System.out.println(" You now have " + tasks.size() + " tasks in your list!");
@@ -78,14 +95,17 @@ public class Carlo {
                         }
 
                         tasks.add(new Todo(description));
+                        storage.save(tasks);
                         System.out.println(" added: " + tasks.getLast());
                         System.out.println(" You now have " + tasks.size() + " tasks in your list!");
                     } else if (command.equals("deadline") || command.startsWith("deadline ")) {
                         tasks.add(createDeadline(command));
+                        storage.save(tasks);
                         System.out.println(" added: " + tasks.getLast());
                         System.out.println(" You now have " + tasks.size() + " tasks in your list!");
                     } else if (command.equals("event") || command.startsWith("event ")) {
                         tasks.add(createEvent(command));
+                        storage.save(tasks);
                         System.out.println(" added: " + tasks.getLast());
                         System.out.println(" You now have " + tasks.size() + " tasks in your list!");
                     } else {
@@ -93,6 +113,7 @@ public class Carlo {
                     }
                 } catch (CarloException e) {
                     System.out.println("Ohno!! " + e.getMessage());
+                    System.out.println(HELP);
                 }
                 System.out.println("____________________________________________________________");
             }
@@ -121,7 +142,7 @@ public class Carlo {
             int taskIndex = Integer.parseInt(numberText) - 1;
 
             if (taskIndex < 0 || taskIndex >= taskCount) {
-                throw new CarloException("I think it that task number does not exist!!! haha");
+                throw new CarloException("I think that task number does not exist!!! haha");
             }
 
             return taskIndex;
