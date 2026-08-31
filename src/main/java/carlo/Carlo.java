@@ -2,11 +2,15 @@ package carlo;
 
 import carlo.exception.CarloException;
 import carlo.storage.Storage;
+import carlo.task.CarloDateTime;
 import carlo.task.Deadline;
 import carlo.task.Event;
 import carlo.task.Task;
 import carlo.task.Todo;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Scanner;
 
@@ -16,6 +20,7 @@ import java.util.Scanner;
  */
 public class Carlo {
     private static final String FILE_PATH = "./data/carlo.txt";
+    private static final DateTimeFormatter ON_DATE_DISPLAY_FORMAT = DateTimeFormatter.ofPattern("MMM d yyyy");
 
     /**
      * Starts the Carlo command-line application.
@@ -42,7 +47,9 @@ public class Carlo {
                         "todo": tasks without any date/time attached
                         "deadline": for tasks that need to be done by a specific time (do specify using /by ___ )
                         "event": for tasks that start and end at specific times (do specify using /from ___ /to ___)
+                    Dates can be given as yyyy-mm-dd or yyyy-mm-dd HHmm, e.g. 2019-12-02 or 2019-12-02 1800!
                 Say 'list' and I will show you your list!
+                Say 'on {date}' (e.g. on 2019-12-02, or on today/tomorrow/yesterday) to see what's happening that day!
                 When you're done, just say 'bye'!""";
 
         Storage storage = new Storage(FILE_PATH);
@@ -68,6 +75,8 @@ public class Carlo {
                         for (int i = 0; i < tasks.size(); i++) {
                             System.out.println(" " + (i + 1) + "." + tasks.get(i));
                         }
+                    } else if (command.equals("on") || command.startsWith("on ")) {
+                        printTasksOnDate(command, tasks);
                     } else if (command.equals("mark") || command.startsWith("mark ")) {
                         int taskIndex = getTaskIndex(command, "mark", tasks.size());
                         tasks.get(taskIndex).markAsDone();
@@ -149,6 +158,61 @@ public class Carlo {
         } catch (NumberFormatException e) {
             throw new CarloException("whole numbers only please!");
         }
+    }
+
+    /**
+     * Prints the deadlines and events that fall on the date given in an
+     * {@code on} command.
+     *
+     * @param command the complete on command
+     * @param tasks the tasks to search through
+     * @throws CarloException if no date was given or it could not be understood
+     */
+    private static void printTasksOnDate(String command, List<Task> tasks) throws CarloException {
+        String dateText = command.substring("on".length()).trim();
+
+        if (dateText.isEmpty()) {
+            throw new CarloException("which date do you mean? try something like 'on 2019-12-02'!");
+        }
+
+        LocalDate date;
+        try {
+            date = CarloDateTime.parseDate(dateText);
+        } catch (DateTimeParseException e) {
+            throw new CarloException("I couldn't understand that date! try yyyy-mm-dd, like 2019-12-02");
+        }
+
+        System.out.println(" Here's what's happening on " + date.format(ON_DATE_DISPLAY_FORMAT) + ":");
+
+        boolean foundAny = false;
+        for (int i = 0; i < tasks.size(); i++) {
+            Task task = tasks.get(i);
+            if (occursOnDate(task, date)) {
+                System.out.println(" " + (i + 1) + "." + task);
+                foundAny = true;
+            }
+        }
+
+        if (!foundAny) {
+            System.out.println(" Nothing on that day! Free day yay!");
+        }
+    }
+
+    /**
+     * Returns whether the given task falls on the given date.
+     *
+     * @param task the task to check
+     * @param date the date to check against
+     * @return {@code true} if {@code task} is a deadline due on {@code date}
+     *         or an event occurring on {@code date}
+     */
+    private static boolean occursOnDate(Task task, LocalDate date) {
+        if (task instanceof Deadline deadline) {
+            return deadline.getDueDateTime().isOnDate(date);
+        } else if (task instanceof Event event) {
+            return event.occursOn(date);
+        }
+        return false;
     }
 
     /**
