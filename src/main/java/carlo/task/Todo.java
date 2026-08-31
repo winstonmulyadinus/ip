@@ -1,3 +1,5 @@
+package carlo.task;
+
 /**
  * Represents a task without a date or time.
  */
@@ -19,5 +21,15 @@ public class Todo extends Task {
     @Override
     public String toString() {
         return "[T]" + super.toString();
+    }
+
+    /**
+     * Returns this to-do task in the on-disk save format.
+     *
+     * @return the type letter, completion flag, and description, separated by " | "
+     */
+    @Override
+    public String toFileFormat() {
+        return "T | " + super.toFileFormat();
     }
 }

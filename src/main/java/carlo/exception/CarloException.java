@@ -1,3 +1,5 @@
+package carlo.exception;
+
 /**
  * Represents an error caused by an invalid Carlo command.
  */

@@ -1,3 +1,5 @@
+package carlo.task;
+
 /**
  * Represents one task and whether it has been completed.
  */
@@ -30,12 +32,41 @@ public class Task {
     }
 
     /**
+     * Returns whether this task has been completed.
+     *
+     * @return {@code true} if the task is done, {@code false} otherwise
+     */
+    public boolean isDone() {
+        return isDone;
+    }
+
+    /**
+     * Returns the description of this task.
+     *
+     * @return the task description
+     */
+    public String getDescription() {
+        return description;
+    }
+
+    /**
      * Returns the character used to display this task's completion state.
      *
      * @return {@code X} for a completed task, or a space otherwise
      */
     public String getStatusIcon() {
         return isDone ? "X" : " ";
+    }
+
+    /**
+     * Returns the completion flag and description portion shared by all
+     * task types when saving to disk. Subclasses prepend their type letter
+     * and append any additional fields they have.
+     *
+     * @return the completion flag and description, separated by " | "
+     */
+    public String toFileFormat() {
+        return (isDone() ? "1" : "0") + " | " + description;
     }
 
     /**
