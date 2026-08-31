@@ -7,12 +7,11 @@ import carlo.task.Deadline;
 import carlo.task.Event;
 import carlo.task.Task;
 import carlo.task.Todo;
+import carlo.ui.Ui;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Scanner;
 
 /**
  * Provides a command-line task list that stores, displays, and marks tasks,
@@ -20,7 +19,6 @@ import java.util.Scanner;
  */
 public class Carlo {
     private static final String FILE_PATH = "./data/carlo.txt";
-    private static final DateTimeFormatter ON_DATE_DISPLAY_FORMAT = DateTimeFormatter.ofPattern("MMM d yyyy");
 
     /**
      * Starts the Carlo command-line application.
@@ -28,104 +26,65 @@ public class Carlo {
      * @param args command-line arguments, which are not used
      */
     public static void main(String[] args) {
-        final String GREETING = """
-                ____________________________________________________________
-                  ██████╗                     \s
-                 ██╔════╝                     \s
-                 ██║       █████╗ ██████╗ ██╗      ██████╗\s
-                 ██║      ██╔══██╗██╔══██╗██║     ██╔═══██╗
-                 ██║      ███████║██████╔╝██║     ██║   ██║
-                 ██║      ██╔══██║██╔══██╗██║     ██║   ██║
-                 ╚███████╗██║  ██║██║  ██║███████╗╚██████╔╝
-                  ╚══════╝╚═╝  ╚═╝╚═╝  ╚══════╝ ╚═════╝\s
-                Cheers! My name is Carlo!
-                I can help you to list down anything!
-                ____________________________________________________________""";
-        final String HELP = """
-                Input your items in order! ({task} {name} {time})
-                    possible list items {task}:
-                        "todo": tasks without any date/time attached
-                        "deadline": for tasks that need to be done by a specific time (do specify using /by ___ )
-                        "event": for tasks that start and end at specific times (do specify using /from ___ /to ___)
-                    Dates can be given as yyyy-mm-dd or yyyy-mm-dd HHmm, e.g. 2019-12-02 or 2019-12-02 1800!
-                Say 'list' and I will show you your list!
-                Say 'on {date}' (e.g. on 2019-12-02, or on today/tomorrow/yesterday) to see what's happening that day!
-                When you're done, just say 'bye'!""";
-
+        Ui ui = new Ui();
         Storage storage = new Storage(FILE_PATH);
         List<Task> tasks = storage.load();
 
-        System.out.println(GREETING);
-        System.out.println(HELP + "\n____________________________________________________________");
+        ui.showGreeting();
 
+        while (ui.hasNextCommand()) {
+            String command = ui.readCommand();
 
-        try (Scanner scanner = new Scanner(System.in)) {
-            while (scanner.hasNextLine()) {
+            ui.showLine();
+            try {
+                if (command.equals("bye")) {
+                    ui.showGoodbye();
+                    ui.showLine();
+                    break;
+                } else if (command.equals("list")) {
+                    ui.showTaskList(tasks);
+                } else if (command.equals("on") || command.startsWith("on ")) {
+                    printTasksOnDate(command, tasks, ui);
+                } else if (command.equals("mark") || command.startsWith("mark ")) {
+                    int taskIndex = getTaskIndex(command, "mark", tasks.size());
+                    tasks.get(taskIndex).markAsDone();
+                    storage.save(tasks);
+                    ui.showTaskMarked(tasks.get(taskIndex));
+                } else if (command.equals("unmark") || command.startsWith("unmark ")) {
+                    int taskIndex = getTaskIndex(command, "unmark", tasks.size());
+                    tasks.get(taskIndex).markAsNotDone();
+                    storage.save(tasks);
+                    ui.showTaskUnmarked(tasks.get(taskIndex));
+                } else if (command.equals("delete") || command.startsWith("delete ")) {
+                    int taskIndex = getTaskIndex(command, "delete", tasks.size());
+                    Task deletedTask = tasks.remove(taskIndex);
+                    storage.save(tasks);
+                    ui.showTaskDeleted(deletedTask, tasks.size());
+                } else if (command.equals("todo") || command.startsWith("todo ")) {
+                    String description = command.substring("todo".length()).trim();
 
-                String command = scanner.nextLine();
-
-                System.out.println("____________________________________________________________");
-                try {
-                    if (command.equals("bye")) {
-                        System.out.println(" Byeeee! Love always!");
-                        System.out.println("____________________________________________________________");
-                        break;
-                    } else if (command.equals("list")) {
-                        System.out.println(" Here's your list!");
-                        for (int i = 0; i < tasks.size(); i++) {
-                            System.out.println(" " + (i + 1) + "." + tasks.get(i));
-                        }
-                    } else if (command.equals("on") || command.startsWith("on ")) {
-                        printTasksOnDate(command, tasks);
-                    } else if (command.equals("mark") || command.startsWith("mark ")) {
-                        int taskIndex = getTaskIndex(command, "mark", tasks.size());
-                        tasks.get(taskIndex).markAsDone();
-                        storage.save(tasks);
-                        System.out.println(" YAY! thank you, next!");
-                        System.out.println("   " + tasks.get(taskIndex));
-                    } else if (command.equals("unmark") || command.startsWith("unmark ")) {
-                        int taskIndex = getTaskIndex(command, "unmark", tasks.size());
-                        tasks.get(taskIndex).markAsNotDone();
-                        storage.save(tasks);
-                        System.out.println(" Awman... okay unmarked for now...");
-                        System.out.println("   " + tasks.get(taskIndex));
-                    } else if (command.equals("delete") || command.startsWith("delete ")) {
-                        int taskIndex = getTaskIndex(command, "delete", tasks.size());
-                        Task deletedTask = tasks.remove(taskIndex);
-                        storage.save(tasks);
-                        System.out.println(" Okay okay, I've removed this task!");
-                        System.out.println("   " + deletedTask);
-                        System.out.println(" You now have " + tasks.size() + " tasks in your list!");
-                    } else if (command.equals("todo") || command.startsWith("todo ")) {
-                        String description = command.substring("todo".length()).trim();
-
-                        if (description.isEmpty()) {
-                            throw new CarloException("hmm... there's nothing to do...");
-                        }
-
-                        tasks.add(new Todo(description));
-                        storage.save(tasks);
-                        System.out.println(" added: " + tasks.getLast());
-                        System.out.println(" You now have " + tasks.size() + " tasks in your list!");
-                    } else if (command.equals("deadline") || command.startsWith("deadline ")) {
-                        tasks.add(createDeadline(command));
-                        storage.save(tasks);
-                        System.out.println(" added: " + tasks.getLast());
-                        System.out.println(" You now have " + tasks.size() + " tasks in your list!");
-                    } else if (command.equals("event") || command.startsWith("event ")) {
-                        tasks.add(createEvent(command));
-                        storage.save(tasks);
-                        System.out.println(" added: " + tasks.getLast());
-                        System.out.println(" You now have " + tasks.size() + " tasks in your list!");
-                    } else {
-                        throw new CarloException("I'm not too sure what you mean actually...");
+                    if (description.isEmpty()) {
+                        throw new CarloException("hmm... there's nothing to do...");
                     }
-                } catch (CarloException e) {
-                    System.out.println("Ohno!! " + e.getMessage());
-                    System.out.println(HELP);
+
+                    tasks.add(new Todo(description));
+                    storage.save(tasks);
+                    ui.showTaskAdded(tasks.getLast(), tasks.size());
+                } else if (command.equals("deadline") || command.startsWith("deadline ")) {
+                    tasks.add(createDeadline(command));
+                    storage.save(tasks);
+                    ui.showTaskAdded(tasks.getLast(), tasks.size());
+                } else if (command.equals("event") || command.startsWith("event ")) {
+                    tasks.add(createEvent(command));
+                    storage.save(tasks);
+                    ui.showTaskAdded(tasks.getLast(), tasks.size());
+                } else {
+                    throw new CarloException("I'm not too sure what you mean actually...");
                 }
-                System.out.println("____________________________________________________________");
+            } catch (CarloException e) {
+                ui.showError(e.getMessage());
             }
+            ui.showLine();
         }
     }
 
@@ -166,9 +125,10 @@ public class Carlo {
      *
      * @param command the complete on command
      * @param tasks the tasks to search through
+     * @param ui the ui to print through
      * @throws CarloException if no date was given or it could not be understood
      */
-    private static void printTasksOnDate(String command, List<Task> tasks) throws CarloException {
+    private static void printTasksOnDate(String command, List<Task> tasks, Ui ui) throws CarloException {
         String dateText = command.substring("on".length()).trim();
 
         if (dateText.isEmpty()) {
@@ -182,20 +142,12 @@ public class Carlo {
             throw new CarloException("I couldn't understand that date! try yyyy-mm-dd, like 2019-12-02");
         }
 
-        System.out.println(" Here's what's happening on " + date.format(ON_DATE_DISPLAY_FORMAT) + ":");
-
-        boolean foundAny = false;
+        boolean[] matches = new boolean[tasks.size()];
         for (int i = 0; i < tasks.size(); i++) {
-            Task task = tasks.get(i);
-            if (occursOnDate(task, date)) {
-                System.out.println(" " + (i + 1) + "." + task);
-                foundAny = true;
-            }
+            matches[i] = occursOnDate(tasks.get(i), date);
         }
 
-        if (!foundAny) {
-            System.out.println(" Nothing on that day! Free day yay!");
-        }
+        ui.showTasksOnDate(date, tasks, matches);
     }
 
     /**
