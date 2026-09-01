@@ -45,6 +45,8 @@ public class Carlo {
                     ui.showTaskList(tasks);
                 } else if (command.equals("on") || command.startsWith("on ")) {
                     printTasksOnDate(command, tasks, ui);
+                } else if (command.equals("find") || command.startsWith("find ")) {
+                    findTasks(command, tasks, ui);
                 } else if (command.equals("mark") || command.startsWith("mark ")) {
                     int taskIndex = getTaskIndex(command, "mark", tasks.size());
                     tasks.get(taskIndex).markAsDone();
@@ -245,5 +247,44 @@ public class Carlo {
         }
 
         return new Event(description, from, to);
+    }
+
+    /**
+     * Prints the tasks whose description contains the keyword given in a
+     * {@code find} command.
+     *
+     * @param command the complete find command
+     * @param tasks the tasks to search through
+     * @param ui the ui to print through
+     * @throws CarloException if no keyword was given
+     */
+    private static void findTasks(String command, List<Task> tasks, Ui ui) throws CarloException {
+        String keyword = command.substring("find".length()).trim();
+
+        if (keyword.isEmpty()) {
+            throw new CarloException("what should I look for? try 'find book'!");
+        }
+
+        ui.showMatchingTasks(tasks, findMatches(tasks, keyword));
+    }
+
+    /**
+     * Returns which of the given tasks have a description containing the
+     * given keyword, using a case-insensitive substring match.
+     *
+     * @param tasks the tasks to search through
+     * @param keyword the keyword to search for
+     * @return a boolean for each task in {@code tasks}, in the same order,
+     *         indicating whether that task's description contains {@code keyword}
+     */
+    static boolean[] findMatches(List<Task> tasks, String keyword) {
+        boolean[] matches = new boolean[tasks.size()];
+        String lowerKeyword = keyword.toLowerCase();
+
+        for (int i = 0; i < tasks.size(); i++) {
+            matches[i] = tasks.get(i).getDescription().toLowerCase().contains(lowerKeyword);
+        }
+
+        return matches;
     }
 }

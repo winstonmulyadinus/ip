@@ -51,6 +51,7 @@ public class Ui {
                     Dates can be given as yyyy-mm-dd or yyyy-mm-dd HHmm, e.g. 2019-12-02 or 2019-12-02 1800!
                 Say 'list' and I will show you your list!
                 Say 'on {date}' (e.g. on 2019-12-02, or on today/tomorrow/yesterday) to see what's happening that day!
+                Say 'find {keyword}' (e.g. find book) to search for tasks by keyword!
                 When you're done, just say 'bye'!""");
     }
 
@@ -131,5 +132,28 @@ public class Ui {
         System.out.println(" Okay okay, I've removed this task!");
         System.out.println("   " + task);
         System.out.println(" You now have " + taskCount + " tasks in your list!");
+    }
+
+    /**
+     * Prints the tasks that matched a search keyword, numbered independently
+     * of their position in the full task list, or a "nothing found" message
+     * if none matched.
+     *
+     * @param tasks the full list of tasks that was searched
+     * @param matches a boolean for each task in {@code tasks}, in the same
+     *        order, indicating whether that task matched the search keyword
+     */
+    public void showMatchingTasks(List<Task> tasks, boolean[] matches) {
+        System.out.println(" Here are the matching tasks in your list:");
+        int count = 0;
+        for (int i = 0; i < tasks.size(); i++) {
+            if (matches[i]) {
+                count++;
+                System.out.println(" " + count + "." + tasks.get(i));
+            }
+        }
+        if (count == 0) {
+            System.out.println(" I couldn't find any matching tasks!");
+        }
     }
 }
