@@ -3,6 +3,7 @@ package carlo;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.ArrayList;
 
 import carlo.exception.CarloException;
 import carlo.storage.Storage;
@@ -22,15 +23,148 @@ import carlo.ui.Ui;
 public class Carlo {
     private static final String FILE_PATH = "./data/carlo.txt";
 
+    private final Storage storage;
+    private final List<Task> tasks;
+
+    /**
+     * Creates a Carlo task manager and loads saved tasks from disk.
+     */
+    public Carlo() {
+        storage = new Storage(FILE_PATH);
+        tasks = storage.load();
+    }
+
+    /**
+     * Adds a todo task and saves the updated task list.
+     *
+     * @param description the description of the todo task
+     * @throws CarloException if the description is empty
+     */
+    public void addTodo(String description) throws CarloException {
+        if (description == null || description.isBlank()) {
+            throw new CarloException("The todo description cannot be empty.");
+        }
+
+        tasks.add(new Todo(description));
+        storage.save(tasks);
+    }
+
+    /**
+     * Adds a deadline task and saves the updated task list.
+     *
+     * @param description the description of the deadline
+     * @param dueTime the deadline date or time
+     * @throws CarloException if the description or due time is empty
+     */
+    public void addDeadline(String description, String dueTime)
+            throws CarloException {
+        if (description == null || description.isBlank()) {
+            throw new CarloException(
+                    "Hmm... I need to know what the deadline is for..."
+            );
+        }
+
+        if (dueTime == null || dueTime.isBlank()) {
+            throw new CarloException("When is this deadline due?");
+        }
+
+        tasks.add(new Deadline(description, dueTime));
+        storage.save(tasks);
+    }
+
+    /**
+     * Adds an event task and saves the updated task list.
+     *
+     * @param description the description of the event
+     * @param from the event start date or time
+     * @param to the event end date or time
+     * @throws CarloException if any input is empty
+     */
+    public void addEvent(String description, String from, String to)
+            throws CarloException {
+        if (description == null || description.isBlank()) {
+            throw new CarloException(
+                    "Hmm... I need to know what the event is..."
+            );
+        }
+
+        if (from == null || from.isBlank()) {
+            throw new CarloException("When does this event start?");
+        }
+
+        if (to == null || to.isBlank()) {
+            throw new CarloException("When does this event end?");
+        }
+
+        tasks.add(new Event(description, from, to));
+        storage.save(tasks);
+    }
+
+    /**
+     * Marks a task as completed and saves the updated task list.
+     *
+     * @param index the zero-based index of the task
+     * @throws CarloException if the index is invalid
+     */
+    public void markTask(int index) throws CarloException {
+        validateTaskIndex(index);
+        tasks.get(index).markAsDone();
+        storage.save(tasks);
+    }
+
+    /**
+     * Marks a task as incomplete and saves the updated task list.
+     *
+     * @param index the zero-based index of the task
+     * @throws CarloException if the index is invalid
+     */
+    public void unmarkTask(int index) throws CarloException {
+        validateTaskIndex(index);
+        tasks.get(index).markAsNotDone();
+        storage.save(tasks);
+    }
+
+    /**
+     * Deletes a task and saves the updated task list.
+     *
+     * @param index the zero-based index of the task
+     * @throws CarloException if the index is invalid
+     */
+    public void deleteTask(int index) throws CarloException {
+        validateTaskIndex(index);
+        tasks.remove(index);
+        storage.save(tasks);
+    }
+
+    /**
+     * Checks whether a zero-based task index is valid.
+     *
+     * @param index the task index to check
+     * @throws CarloException if the index does not identify a task
+     */
+    private void validateTaskIndex(int index) throws CarloException {
+        if (index < 0 || index >= tasks.size()) {
+            throw new CarloException("That task does not exist.");
+        }
+    }
+
+    /**
+     * Returns the tasks currently stored by Carlo.
+     *
+     * @return the mutable list of tasks
+     */
+    public List<Task> getTasks() {
+        return tasks;
+    }
+
     /**
      * Starts the Carlo command-line application.
      *
      * @param args command-line arguments, which are not used
      */
     public static void main(String[] args) {
+        Carlo carlo = new Carlo();
         Ui ui = new Ui();
-        Storage storage = new Storage(FILE_PATH);
-        List<Task> tasks = storage.load();
 
         ui.showGreeting();
 
@@ -44,26 +178,27 @@ public class Carlo {
                     ui.showLine();
                     break;
                 } else if (command.equals("list")) {
-                    ui.showTaskList(tasks);
+                    ui.showTaskList(carlo.tasks);
                 } else if (command.equals("on") || command.startsWith("on ")) {
-                    printTasksOnDate(command, tasks, ui);
+                    printTasksOnDate(command, carlo.tasks, ui);
                 } else if (command.equals("find") || command.startsWith("find ")) {
-                    findTasks(command, tasks, ui);
+                    findTasks(command, carlo.tasks, ui);
                 } else if (command.equals("mark") || command.startsWith("mark ")) {
-                    int taskIndex = getTaskIndex(command, "mark", tasks.size());
-                    tasks.get(taskIndex).markAsDone();
-                    storage.save(tasks);
-                    ui.showTaskMarked(tasks.get(taskIndex));
+                    int taskIndex = getTaskIndex(command, "mark", carlo.tasks.size());
+
+                    carlo.markTask(taskIndex);
+                    ui.showTaskMarked(carlo.tasks.get(taskIndex));
                 } else if (command.equals("unmark") || command.startsWith("unmark ")) {
-                    int taskIndex = getTaskIndex(command, "unmark", tasks.size());
-                    tasks.get(taskIndex).markAsNotDone();
-                    storage.save(tasks);
-                    ui.showTaskUnmarked(tasks.get(taskIndex));
+                    int taskIndex = getTaskIndex(command, "unmark", carlo.tasks.size());
+
+                    carlo.unmarkTask(taskIndex);
+                    ui.showTaskUnmarked(carlo.tasks.get(taskIndex));
                 } else if (command.equals("delete") || command.startsWith("delete ")) {
-                    int taskIndex = getTaskIndex(command, "delete", tasks.size());
-                    Task deletedTask = tasks.remove(taskIndex);
-                    storage.save(tasks);
-                    ui.showTaskDeleted(deletedTask, tasks.size());
+                    int taskIndex = getTaskIndex(command, "delete", carlo.tasks.size());
+                    Task deletedTask = carlo.tasks.get(taskIndex);
+
+                    carlo.deleteTask(taskIndex);
+                    ui.showTaskDeleted(deletedTask, carlo.tasks.size());
                 } else if (command.equals("todo") || command.startsWith("todo ")) {
                     String description = command.substring("todo".length()).trim();
 
@@ -71,23 +206,32 @@ public class Carlo {
                         throw new CarloException("hmm... there's nothing to do...");
                     }
 
-                    tasks.add(new Todo(description));
-                    storage.save(tasks);
-                    ui.showTaskAdded(tasks.getLast(), tasks.size());
-                } else if (command.equals("deadline") || command.startsWith("deadline ")) {
-                    tasks.add(createDeadline(command));
-                    storage.save(tasks);
-                    ui.showTaskAdded(tasks.getLast(), tasks.size());
-                } else if (command.equals("event") || command.startsWith("event ")) {
-                    tasks.add(createEvent(command));
-                    storage.save(tasks);
-                    ui.showTaskAdded(tasks.getLast(), tasks.size());
+                    carlo.addTodo(description);
+                    ui.showTaskAdded(carlo.tasks.getLast(), carlo.tasks.size());
+                } else if (command.equals("deadline")
+                        || command.startsWith("deadline ")) {
+                    Deadline deadline = createDeadline(command);
+
+                    carlo.tasks.add(deadline);
+                    carlo.storage.save(carlo.tasks);
+
+                    ui.showTaskAdded(carlo.tasks.getLast(), carlo.tasks.size());
+                } else if (command.equals("event")
+                        || command.startsWith("event ")) {
+                    Event event = createEvent(command);
+
+                    carlo.tasks.add(event);
+                    carlo.storage.save(carlo.tasks);
+
+                    ui.showTaskAdded(carlo.tasks.getLast(), carlo.tasks.size());
                 } else {
-                    throw new CarloException("I'm not too sure what you mean actually...");
+                    throw new CarloException(
+                            "I'm not too sure what you mean actually...");
                 }
             } catch (CarloException e) {
                 ui.showError(e.getMessage());
             }
+
             ui.showLine();
         }
     }
@@ -254,22 +398,72 @@ public class Carlo {
     }
 
     /**
-     * Prints the tasks whose description contains the keyword given in a
-     * {@code find} command.
+     * Displays tasks whose descriptions contain the keyword from a CLI command.
      *
      * @param command the complete find command
      * @param tasks the tasks to search through
-     * @param ui the ui to print through
-     * @throws CarloException if no keyword was given
+     * @param ui the command-line user interface
+     * @throws CarloException if no keyword was provided
      */
-    private static void findTasks(String command, List<Task> tasks, Ui ui) throws CarloException {
+    private static void findTasks(
+            String command,
+            List<Task> tasks,
+            Ui ui
+    ) throws CarloException {
         String keyword = command.substring("find".length()).trim();
 
         if (keyword.isEmpty()) {
-            throw new CarloException("what should I look for? try 'find book'!");
+            throw new CarloException(
+                    "what should I look for?\nTry 'find book'!"
+            );
         }
 
         ui.showMatchingTasks(tasks, findMatches(tasks, keyword));
+    }
+
+    /**
+     * Finds tasks whose descriptions contain the given keyword.
+     *
+     * @param keyword the keyword to search for
+     * @return a list of matching tasks
+     * @throws CarloException if the keyword is empty
+     */
+    public List<Task> findTasks(String keyword) throws CarloException {
+        if (keyword == null || keyword.isBlank()) {
+            throw new CarloException(
+                    "What should I look for?\nTry searching for a keyword!"
+            );
+        }
+
+        String lowerKeyword = keyword.toLowerCase();
+
+        List<Task> matches = new ArrayList<>();
+
+        for (Task task : tasks) {
+            if (task.getDescription().toLowerCase().contains(lowerKeyword)) {
+                matches.add(task);
+            }
+        }
+
+        return matches;
+    }
+
+    /**
+     * Returns tasks that occur on a given date.
+     *
+     * @param date the date to search for
+     * @return tasks occurring on the date
+     */
+    public List<Task> getTasksOnDate(LocalDate date) {
+        List<Task> matches = new ArrayList<>();
+
+        for (Task task : tasks) {
+            if (occursOnDate(task, date)) {
+                matches.add(task);
+            }
+        }
+
+        return matches;
     }
 
     /**
