@@ -1,15 +1,16 @@
 package carlo;
 
-import carlo.exception.CarloException;
-import carlo.task.Task;
-import org.junit.jupiter.api.Test;
-import carlo.task.Todo;
 import java.util.List;
+
+import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import carlo.exception.CarloException;
+import carlo.task.Task;
+import carlo.task.Todo;
 /**
  * Tests for {@link Carlo#getTaskIndex(String, String, int)} and
  * {@link Carlo#findMatches(List, String)}.

@@ -32,6 +32,8 @@ public class Carlo {
     public Carlo() {
         storage = new Storage(FILE_PATH);
         tasks = storage.load();
+        assert storage != null : "Storage must be initialised";
+        assert tasks != null : "Loading tasks must return a list";
     }
 
     /**
@@ -146,6 +148,8 @@ public class Carlo {
         if (index < 0 || index >= tasks.size()) {
             throw new CarloException("That task does not exist.");
         }
+        assert index >= 0 && index < tasks.size()
+                : "A validated task index must refer to an existing task";
     }
 
     /**
