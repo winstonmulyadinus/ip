@@ -33,6 +33,8 @@ public class Carlo {
     public Carlo() {
         storage = new Storage(FILE_PATH);
         tasks = storage.load();
+        assert storage != null : "Storage must be initialised";
+        assert tasks != null : "Loading tasks must return a list";
     }
 
     /**
@@ -147,6 +149,8 @@ public class Carlo {
         if (index < 0 || index >= tasks.size()) {
             throw new CarloException("That task does not exist.");
         }
+        assert index >= 0 && index < tasks.size()
+                : "A validated task index must refer to an existing task";
     }
 
     /**
@@ -173,67 +177,18 @@ public class Carlo {
             String command = ui.readCommand();
 
             ui.showLine();
+
             try {
-                if (command.equals("bye")) {
-                    ui.showGoodbye();
-                    ui.showLine();
-                    break;
-                } else if (command.equals("list")) {
-                    ui.showTaskList(carlo.tasks);
-                } else if (command.equals("on") || command.startsWith("on ")) {
-                    printTasksOnDate(command, carlo.tasks, ui);
-                } else if (command.equals("find") || command.startsWith("find ")) {
-                    findTasks(command, carlo.tasks, ui);
-                } else if (command.equals("mark") || command.startsWith("mark ")) {
-                    int taskIndex = getTaskIndex(command, "mark", carlo.tasks.size());
-
-                    carlo.markTask(taskIndex);
-                    ui.showTaskMarked(carlo.tasks.get(taskIndex));
-                } else if (command.equals("unmark") || command.startsWith("unmark ")) {
-                    int taskIndex = getTaskIndex(command, "unmark", carlo.tasks.size());
-
-                    carlo.unmarkTask(taskIndex);
-                    ui.showTaskUnmarked(carlo.tasks.get(taskIndex));
-                } else if (command.equals("delete") || command.startsWith("delete ")) {
-                    int taskIndex = getTaskIndex(command, "delete", carlo.tasks.size());
-                    Task deletedTask = carlo.tasks.get(taskIndex);
-
-                    carlo.deleteTask(taskIndex);
-                    ui.showTaskDeleted(deletedTask, carlo.tasks.size());
-                } else if (command.equals("todo") || command.startsWith("todo ")) {
-                    String description = command.substring("todo".length()).trim();
-
-                    if (description.isEmpty()) {
-                        throw new CarloException("hmm... there's nothing to do...");
-                    }
-
-                    carlo.addTodo(description);
-                    ui.showTaskAdded(carlo.tasks.getLast(), carlo.tasks.size());
-                } else if (command.equals("deadline")
-                        || command.startsWith("deadline ")) {
-                    Deadline deadline = createDeadline(command);
-
-                    carlo.tasks.add(deadline);
-                    carlo.storage.save(carlo.tasks);
-
-                    ui.showTaskAdded(carlo.tasks.getLast(), carlo.tasks.size());
-                } else if (command.equals("event")
-                        || command.startsWith("event ")) {
-                    Event event = createEvent(command);
-
-                    carlo.tasks.add(event);
-                    carlo.storage.save(carlo.tasks);
-
-                    ui.showTaskAdded(carlo.tasks.getLast(), carlo.tasks.size());
-                } else {
-                    throw new CarloException(
-                            "I'm not too sure what you mean actually...");
-                }
+                handleCommand(command, carlo, ui);
             } catch (CarloException e) {
                 ui.showError(e.getMessage());
             }
 
             ui.showLine();
+
+            if (command.equals("bye")) {
+                break;
+            }
         }
     }
 
@@ -475,5 +430,225 @@ public class Carlo {
         }
 
         return matches;
+    }
+
+    /**
+     * Dispatches a command to its handler and displays the result.
+     *
+     * <p>The bye command displays a farewell; the caller handles
+     * terminating the command loop.
+     *
+     * @param command the complete command entered by the user
+     * @param carlo the task manager
+     * @param ui the command-line user interface
+     * @throws CarloException if the command is unknown or its arguments are invalid
+     */
+    private static void handleCommand(
+            String command,
+            Carlo carlo,
+            Ui ui
+    ) throws CarloException {
+
+        if (command.equals("bye")) {
+            ui.showGoodbye();
+            return;
+        }
+
+        if (command.equals("list")) {
+            ui.showTaskList(carlo.tasks);
+            return;
+        }
+
+        if (command.equals("on") || command.startsWith("on ")) {
+            printTasksOnDate(command, carlo.tasks, ui);
+            return;
+        }
+
+        if (command.equals("find") || command.startsWith("find ")) {
+            findTasks(command, carlo.tasks, ui);
+            return;
+        }
+
+        if (command.equals("mark") || command.startsWith("mark ")) {
+            handleMark(command, carlo, ui);
+            return;
+        }
+
+        if (command.equals("unmark") || command.startsWith("unmark ")) {
+            handleUnmark(command, carlo, ui);
+            return;
+        }
+
+        if (command.equals("delete") || command.startsWith("delete ")) {
+            handleDelete(command, carlo, ui);
+            return;
+        }
+
+        if (command.equals("todo") || command.startsWith("todo ")) {
+            handleTodo(command, carlo, ui);
+            return;
+        }
+
+        if (command.equals("deadline") || command.startsWith("deadline ")) {
+            handleDeadline(command, carlo, ui);
+            return;
+        }
+
+        if (command.equals("event") || command.startsWith("event ")) {
+            handleEvent(command, carlo, ui);
+            return;
+        }
+
+        throw new CarloException("I'm not too sure what you mean actually...");
+    }
+
+    /**
+     * Marks the specified task as completed and displays confirmation.
+     *
+     * @param command the complete mark command
+     * @param carlo the task manager
+     * @param ui the command-line user interface
+     * @throws CarloException if the task number is missing, not a whole number,
+     *         or does not identify a stored task
+     */
+    private static void handleMark(
+            String command,
+            Carlo carlo,
+            Ui ui
+    ) throws CarloException {
+
+        int taskIndex = getTaskIndex(
+                command,
+                "mark",
+                carlo.tasks.size()
+        );
+
+        carlo.markTask(taskIndex);
+        ui.showTaskMarked(carlo.tasks.get(taskIndex));
+    }
+
+    /**
+     * Marks the specified task as incomplete and displays confirmation.
+     *
+     * @param command the complete unmark command
+     * @param carlo the task manager
+     * @param ui the command-line user interface
+     * @throws CarloException if the task number is missing, not a whole number,
+     *         or does not identify a stored task
+     */
+    private static void handleUnmark(
+            String command,
+            Carlo carlo,
+            Ui ui
+    ) throws CarloException {
+        int taskIndex = getTaskIndex(
+                command,
+                "unmark",
+                carlo.tasks.size()
+        );
+
+        carlo.unmarkTask(taskIndex);
+        ui.showTaskUnmarked(carlo.tasks.get(taskIndex));
+    }
+
+    /**
+     * Deletes the specified task and displays the remaining task count.
+     *
+     * @param command the complete delete command
+     * @param carlo the task manager
+     * @param ui the command-line user interface
+     * @throws CarloException if the task number is missing, not a whole number,
+     *         or does not identify a stored task
+     */
+    private static void handleDelete(
+            String command,
+            Carlo carlo,
+            Ui ui
+    ) throws CarloException {
+        int taskIndex = getTaskIndex(
+                command,
+                "delete",
+                carlo.tasks.size()
+        );
+
+        Task deletedTask = carlo.tasks.get(taskIndex);
+        carlo.deleteTask(taskIndex);
+        ui.showTaskDeleted(deletedTask, carlo.tasks.size());
+    }
+
+    /**
+     * Parses a todo command, adds the task, and displays confirmation.
+     *
+     * @param command the complete todo command
+     * @param carlo the task manager
+     * @param ui the command-line user interface
+     * @throws CarloException if the task description is empty
+     */
+    private static void handleTodo(
+            String command,
+            Carlo carlo,
+            Ui ui
+    ) throws CarloException {
+        String description = command.substring("todo".length()).trim();
+
+        if (description.isEmpty()) {
+            throw new CarloException("hmm... there's nothing to do...");
+        }
+
+        carlo.addTodo(description);
+        ui.showTaskAdded(
+                carlo.tasks.getLast(),
+                carlo.tasks.size()
+        );
+    }
+
+    /**
+     * Parses a deadline command, adds the task, saves the task list,
+     * and displays confirmation.
+     *
+     * @param command the complete deadline command
+     * @param carlo the task manager
+     * @param ui the command-line user interface
+     * @throws CarloException if the deadline description is empty
+     */
+    private static void handleDeadline(
+            String command,
+            Carlo carlo,
+            Ui ui
+    ) throws CarloException {
+        Deadline deadline = createDeadline(command);
+
+        carlo.tasks.add(deadline);
+        carlo.storage.save(carlo.tasks);
+
+        ui.showTaskAdded(
+                carlo.tasks.getLast(),
+                carlo.tasks.size()
+        );
+    }
+
+    /**
+     * Parses an event command, adds the task, saves the task list,
+     * and displays confirmation.
+     *
+     * @param command the complete event command
+     * @param carlo the task manager
+     * @param ui the command-line user interface
+     * @throws CarloException if the event description is empty
+     */
+    private static void handleEvent(
+            String command,
+            Carlo carlo,
+            Ui ui
+    ) throws CarloException {
+        Event event = createEvent(command);
+
+        carlo.tasks.add(event);
+        carlo.storage.save(carlo.tasks);
+
+        ui.showTaskAdded(
+                carlo.tasks.getLast(),
+                carlo.tasks.size()
+        );
     }
 }
