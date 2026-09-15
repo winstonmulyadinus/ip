@@ -41,6 +41,7 @@ public class MainWindow extends Application {
         • todo: tasks without any date/time attached
         • deadline: tasks that need to be completed by a specific time
         • event: tasks that start and end at specific times
+        Click Undo to reverse the last task operation.
 
         Dates can be given as yyyy-mm-dd or yyyy-mm-dd HHmm.
         """;
@@ -206,14 +207,17 @@ public class MainWindow extends Application {
     }
 
     /**
-     * Creates the buttons for modifying the selected task.
+     * Creates the task action buttons, including undo.
+     *
+     * @return the row of task action buttons
      */
     private HBox createActionArea() {
         return new HBox(
                 SPACING,
                 createButton("Mark done", this::markSelectedTask),
                 createButton("Unmark", this::unmarkSelectedTask),
-                createButton("Delete", this::deleteSelectedTask)
+                createButton("Delete", this::deleteSelectedTask),
+                createButton("Undo", this::undoLastAction)
         );
     }
 
@@ -472,5 +476,18 @@ public class MainWindow extends Application {
         }
 
         return carlo.getTasks().indexOf(selectedTask);
+    }
+
+    /**
+     * Undoes the latest task operation and refreshes the displayed list.
+     */
+    private void undoLastAction() {
+        try {
+            carlo.undo();
+            refreshTaskList();
+            messageLabel.setText("Undid the last task operation!");
+        } catch (CarloException e) {
+            messageLabel.setText(e.getMessage());
+        }
     }
 }

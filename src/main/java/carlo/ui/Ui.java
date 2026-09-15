@@ -1,11 +1,12 @@
 package carlo.ui;
 
-import carlo.task.Task;
-
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Scanner;
+
+import carlo.task.Task;
+
 
 /**
  * Handles all interaction with the user: printing output to the console
@@ -52,6 +53,7 @@ public class Ui {
                 Say 'list' and I will show you your list!
                 Say 'on {date}' (e.g. on 2019-12-02, or on today/tomorrow/yesterday) to see what's happening that day!
                 Say 'find {keyword}' (e.g. find book) to search for tasks by keyword!
+                Say 'undo' to reverse the last task operation!
                 When you're done, just say 'bye'!""");
     }
 
@@ -155,5 +157,12 @@ public class Ui {
         if (count == 0) {
             System.out.println(" I couldn't find any matching tasks!");
         }
+    }
+
+    /**
+     * Displays confirmation that the last task operation was undone.
+     */
+    public void showUndo() {
+        System.out.println(" Undid the last task operation!");
     }
 }

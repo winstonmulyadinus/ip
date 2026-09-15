@@ -2,7 +2,9 @@ package carlo;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,6 +28,7 @@ public class Carlo {
 
     private final Storage storage;
     private final List<Task> tasks;
+    private final Deque<Runnable> undoHistory = new ArrayDeque<>();
 
     /**
      * Creates a Carlo task manager and loads saved tasks from disk.
@@ -48,8 +51,7 @@ public class Carlo {
             throw new CarloException("The todo description cannot be empty.");
         }
 
-        tasks.add(new Todo(description));
-        storage.save(tasks);
+        addTask(new Todo(description));
     }
 
     /**
@@ -71,8 +73,8 @@ public class Carlo {
             throw new CarloException("When is this deadline due?");
         }
 
-        tasks.add(new Deadline(description, dueTime));
-        storage.save(tasks);
+        addTask(new Deadline(description, dueTime));
+
     }
 
     /**
@@ -99,43 +101,41 @@ public class Carlo {
             throw new CarloException("When does this event end?");
         }
 
-        tasks.add(new Event(description, from, to));
-        storage.save(tasks);
+        addTask(new Event(description, from, to));
     }
 
     /**
-     * Marks a task as completed and saves the updated task list.
+     * Marks a task as completed and saves the task list.
      *
      * @param index the zero-based index of the task
      * @throws CarloException if the index is invalid
      */
     public void markTask(int index) throws CarloException {
-        validateTaskIndex(index);
-        tasks.get(index).markAsDone();
-        storage.save(tasks);
+        changeTaskStatus(index, true);
     }
 
     /**
-     * Marks a task as incomplete and saves the updated task list.
+     * Marks a task as incomplete and saves the task list.
      *
      * @param index the zero-based index of the task
      * @throws CarloException if the index is invalid
      */
     public void unmarkTask(int index) throws CarloException {
-        validateTaskIndex(index);
-        tasks.get(index).markAsNotDone();
-        storage.save(tasks);
+        changeTaskStatus(index, false);
     }
 
     /**
-     * Deletes a task and saves the updated task list.
+     * Deletes a task, records its reverse action, and saves the task list.
      *
      * @param index the zero-based index of the task
      * @throws CarloException if the index is invalid
      */
     public void deleteTask(int index) throws CarloException {
         validateTaskIndex(index);
-        tasks.remove(index);
+
+        Task deletedTask = tasks.remove(index);
+        undoHistory.push(() -> tasks.add(index, deletedTask));
+
         storage.save(tasks);
     }
 
@@ -499,6 +499,12 @@ public class Carlo {
             return;
         }
 
+        if (command.equals("undo")) {
+            carlo.undo();
+            ui.showUndo();
+            return;
+        }
+
         throw new CarloException("I'm not too sure what you mean actually...");
     }
 
@@ -618,8 +624,7 @@ public class Carlo {
     ) throws CarloException {
         Deadline deadline = createDeadline(command);
 
-        carlo.tasks.add(deadline);
-        carlo.storage.save(carlo.tasks);
+        carlo.addTask(deadline);
 
         ui.showTaskAdded(
                 carlo.tasks.getLast(),
@@ -643,12 +648,77 @@ public class Carlo {
     ) throws CarloException {
         Event event = createEvent(command);
 
-        carlo.tasks.add(event);
-        carlo.storage.save(carlo.tasks);
+        carlo.addTask(event);
 
         ui.showTaskAdded(
                 carlo.tasks.getLast(),
                 carlo.tasks.size()
         );
+    }
+
+    /**
+     * Adds a task, records its reverse action, and saves the task list.
+     *
+     * @param task the task to add
+     */
+    private void addTask(Task task) {
+        int index = tasks.size();
+        tasks.add(task);
+
+        undoHistory.push(() -> tasks.remove(index));
+        storage.save(tasks);
+    }
+
+    /**
+     * Changes a task's completion status and records its previous status.
+     *
+     * @param index the zero-based index of the task
+     * @param isDone the desired completion status
+     * @throws CarloException if the index is invalid
+     */
+    private void changeTaskStatus(int index, boolean isDone)
+            throws CarloException {
+        validateTaskIndex(index);
+
+        Task task = tasks.get(index);
+        boolean wasDone = task.isDone();
+
+        setTaskStatus(task, isDone);
+        undoHistory.push(() -> setTaskStatus(task, wasDone));
+
+        storage.save(tasks);
+    }
+
+    /**
+     * Sets a task's completion status without recording history.
+     *
+     * @param task the task to update
+     * @param isDone whether the task should be completed
+     */
+    private void setTaskStatus(Task task, boolean isDone) {
+        if (isDone) {
+            task.markAsDone();
+        } else {
+            task.markAsNotDone();
+        }
+    }
+
+    /**
+     * Reverses the most recent recorded operation and saves the task list.
+     *
+     * <p>History is retained only during the current application session.
+     *
+     * @throws CarloException if there is no operation to undo
+     */
+    public void undo() throws CarloException {
+        if (undoHistory.isEmpty()) {
+            throw new CarloException("There is nothing to undo!");
+        }
+
+        Runnable reverseAction = undoHistory.peek();
+        reverseAction.run();
+        undoHistory.pop();
+
+        storage.save(tasks);
     }
 }
