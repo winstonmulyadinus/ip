@@ -62,7 +62,10 @@ public final class CarloDateTime {
     public static CarloDateTime parse(String text) {
         for (DateTimeFormatter format : DATE_TIME_INPUT_FORMATS) {
             try {
-                return new CarloDateTime(text, LocalDateTime.parse(text, format), true);
+                CarloDateTime result = new CarloDateTime(
+                        text, LocalDateTime.parse(text, format), true);
+                assert result.isParsed() : "Date-time input must be parsed";
+                return result;
             } catch (DateTimeParseException ignored) {
                 // try the next format
             }
@@ -71,7 +74,10 @@ public final class CarloDateTime {
         for (DateTimeFormatter format : DATE_ONLY_INPUT_FORMATS) {
             try {
                 LocalDate date = LocalDate.parse(text, format);
-                return new CarloDateTime(text, date.atStartOfDay(), false);
+                CarloDateTime result = new CarloDateTime(
+                        text, date.atStartOfDay(), false);
+                assert result.isParsed() : "Date input must be parsed";
+                return result;
             } catch (DateTimeParseException ignored) {
                 // try the next format
             }

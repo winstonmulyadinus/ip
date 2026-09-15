@@ -42,6 +42,7 @@ public class Storage {
      */
     public List<Task> load() {
         List<Task> tasks = new ArrayList<>();
+        assert tasks != null : "The load operation must use a task list";
 
         if (!Files.exists(filePath)) {
             return tasks;
@@ -148,6 +149,7 @@ public class Storage {
             task.markAsDone();
         }
 
+        assert task != null : "A valid save-file line must produce a task";
         return task;
     }
 }
