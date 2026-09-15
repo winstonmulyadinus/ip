@@ -2,8 +2,9 @@ package carlo;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import carlo.exception.CarloException;
 import carlo.storage.Storage;
@@ -437,15 +438,11 @@ public class Carlo {
 
         String lowerKeyword = keyword.toLowerCase();
 
-        List<Task> matches = new ArrayList<>();
-
-        for (Task task : tasks) {
-            if (task.getDescription().toLowerCase().contains(lowerKeyword)) {
-                matches.add(task);
-            }
-        }
-
-        return matches;
+        return tasks.stream()
+                .filter(task -> task.getDescription()
+                        .toLowerCase()
+                        .contains(lowerKeyword))
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**
@@ -455,15 +452,9 @@ public class Carlo {
      * @return tasks occurring on the date
      */
     public List<Task> getTasksOnDate(LocalDate date) {
-        List<Task> matches = new ArrayList<>();
-
-        for (Task task : tasks) {
-            if (occursOnDate(task, date)) {
-                matches.add(task);
-            }
-        }
-
-        return matches;
+        return tasks.stream()
+                .filter(task -> occursOnDate(task, date))
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**
