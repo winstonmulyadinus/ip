@@ -1,5 +1,9 @@
 package carlo.ui;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.util.List;
+
 import carlo.Carlo;
 import carlo.exception.CarloException;
 import carlo.task.CarloDateTime;
@@ -13,37 +17,18 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.stage.Stage;
-
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
-import java.util.List;
 
 
 /**
  * Provides the JavaFX graphical user interface for Carlo.
  */
 public class MainWindow extends Application {
-    private Carlo carlo;
-    private ListView<String> taskListView;
-    private TextField taskInput;
-    private TextField deadlineDescriptionInput;
-    private TextField deadlineTimeInput;
-
-    private TextField eventDescriptionInput;
-    private TextField eventFromInput;
-    private TextField eventToInput;
-
-    private TextField searchInput;
-    private TextField dateInput;
-
-    private Label messageLabel;
-
     private static final String GREETING = """
         Cheers! My name is Carlo!
         I can help you to list down anything!
@@ -60,6 +45,27 @@ public class MainWindow extends Application {
         Dates can be given as yyyy-mm-dd or yyyy-mm-dd HHmm.
         """;
 
+    private static final int SPACING = 10;
+    private static final int WINDOW_WIDTH = 800;
+    private static final int WINDOW_HEIGHT = 600;
+    private static final int IMAGE_SIZE = 120;
+    private static final int MESSAGE_WIDTH = 500;
+
+    private Carlo carlo;
+    private ListView<Task> taskListView;
+    private TextField taskInput;
+    private TextField deadlineDescriptionInput;
+    private TextField deadlineTimeInput;
+
+    private TextField eventDescriptionInput;
+    private TextField eventFromInput;
+    private TextField eventToInput;
+
+    private TextField searchInput;
+    private TextField dateInput;
+
+    private Label messageLabel;
+
     /**
      * Starts the Carlo graphical user interface.
      *
@@ -68,162 +74,174 @@ public class MainWindow extends Application {
     @Override
     public void start(Stage stage) {
         carlo = new Carlo();
-
         taskListView = new ListView<>();
 
-        taskInput = new TextField();
-        taskInput.setPromptText("Enter a todo");
-        taskInput.setOnAction(event -> addTodo());
+        BorderPane root = createLayout();
+        refreshTaskList();
 
-        deadlineDescriptionInput = new TextField();
-        deadlineDescriptionInput.setPromptText("Deadline description");
-        deadlineDescriptionInput.setOnAction(event -> addDeadline());
+        stage.setTitle("Carlo");
+        stage.setScene(new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT));
+        stage.show();
+    }
 
-        deadlineTimeInput = new TextField();
-        deadlineTimeInput.setPromptText("Due date/time");
-        deadlineTimeInput.setOnAction(event -> addDeadline());
+    /**
+     * Creates the main window layout.
+     */
+    private BorderPane createLayout() {
+        BorderPane root = new BorderPane();
+        root.setTop(createTopArea());
+        root.setCenter(taskListView);
+        root.setBottom(new VBox(SPACING, createActionArea()));
+        return root;
+    }
 
-        Button addDeadlineButton = new Button("Add deadline");
-        addDeadlineButton.setOnAction(event -> addDeadline());
-
-        eventDescriptionInput = new TextField();
-        eventDescriptionInput.setPromptText("Event description");
-        eventDescriptionInput.setOnAction(event -> addEvent());
-
-        eventFromInput = new TextField();
-        eventFromInput.setPromptText("From");
-        eventFromInput.setOnAction(event -> addEvent());
-
-        eventToInput = new TextField();
-        eventToInput.setPromptText("To");
-        eventToInput.setOnAction(event -> addEvent());
-
-        Button addEventButton = new Button("Add event");
-        addEventButton.setOnAction(event -> addEvent());
-
-        searchInput = new TextField();
-        searchInput.setPromptText("Find task");
-
-        Button searchButton = new Button("Find");
-        searchButton.setOnAction(event -> findTasks());
-
-        searchInput.setOnAction(event -> findTasks());
-
-        dateInput = new TextField();
-        dateInput.setPromptText("Date: yyyy-mm-dd");
-
-        Button dateButton = new Button("Show date");
-        dateButton.setOnAction(event -> showTasksOnDate());
-
-        dateInput.setOnAction(event -> showTasksOnDate());
-
-        Button showAllButton = new Button("Show all");
-        showAllButton.setOnAction(event -> refreshTaskList());
-
-        Image image = new Image(
-                getClass().getResourceAsStream("/images/carlo.png")
+    /**
+     * Creates the input and message sections at the top of the window.
+     */
+    private BorderPane createTopArea() {
+        VBox inputArea = new VBox(
+                SPACING,
+                new Label(GREETING),
+                createTodoArea(),
+                createDeadlineArea(),
+                createEventArea(),
+                createSearchArea()
         );
 
-        ImageView imageView = new ImageView(image);
-        imageView.setFitWidth(120);
-        imageView.setFitHeight(120);
-        imageView.setPreserveRatio(true);
+        VBox messageArea = createMessageArea();
 
-        messageLabel = new Label();
-        messageLabel.setWrapText(true);
-        messageLabel.setMaxWidth(500);
-        Label welcomeLabel = new Label(GREETING);
+        BorderPane topArea = new BorderPane();
+        topArea.setLeft(inputArea);
+        topArea.setRight(messageArea);
+        BorderPane.setMargin(messageArea, new Insets(SPACING));
+        return topArea;
+    }
 
-        Button addButton = new Button("Add");
-        Button markButton = new Button("Mark done");
-        Button unmarkButton = new Button("Unmark");
-        Button deleteButton = new Button("Delete");
-        Button helpButton = new Button("Help");
-        helpButton.setOnAction(event -> showHelp());
+    /**
+     * Creates the todo input row.
+     */
+    private HBox createTodoArea() {
+        taskInput = createTextField("Enter a todo", this::addTodo);
 
-        addButton.setOnAction(event -> addTodo());
-        markButton.setOnAction(event -> markSelectedTask());
-        unmarkButton.setOnAction(event -> unmarkSelectedTask());
-        deleteButton.setOnAction(event -> deleteSelectedTask());
-
-        HBox inputArea = new HBox(
-                10,
+        return new HBox(
+                SPACING,
                 taskInput,
-                addButton,
-                helpButton
+                createButton("Add", this::addTodo),
+                createButton("Help", this::showHelp)
         );
+    }
 
+    /**
+     * Creates the deadline input row.
+     */
+    private HBox createDeadlineArea() {
+        deadlineDescriptionInput = createTextField(
+                "Deadline description", this::addDeadline);
+        deadlineTimeInput = createTextField(
+                "Due date/time", this::addDeadline);
 
-        HBox deadlineArea = new HBox(
-                10,
+        return new HBox(
+                SPACING,
                 deadlineDescriptionInput,
                 deadlineTimeInput,
-                addDeadlineButton
+                createButton("Add deadline", this::addDeadline)
         );
+    }
 
-        HBox eventArea = new HBox(
-                10,
+    /**
+     * Creates the event input row.
+     */
+    private HBox createEventArea() {
+        eventDescriptionInput = createTextField(
+                "Event description", this::addEvent);
+        eventFromInput = createTextField("From", this::addEvent);
+        eventToInput = createTextField("To", this::addEvent);
+
+        return new HBox(
+                SPACING,
                 eventDescriptionInput,
                 eventFromInput,
                 eventToInput,
-                addEventButton
+                createButton("Add event", this::addEvent)
         );
+    }
 
-        HBox searchArea = new HBox(
-                10,
+    /**
+     * Creates the keyword and date search row.
+     */
+    private HBox createSearchArea() {
+        searchInput = createTextField("Find task", this::findTasks);
+        dateInput = createTextField(
+                "Date: yyyy-mm-dd", this::showTasksOnDate);
+
+        return new HBox(
+                SPACING,
                 searchInput,
-                searchButton,
+                createButton("Find", this::findTasks),
                 dateInput,
-                dateButton,
-                showAllButton
+                createButton("Show date", this::showTasksOnDate),
+                createButton("Show all", this::refreshTaskList)
         );
+    }
 
-        VBox leftTopArea = new VBox(
-                10,
-                welcomeLabel,
-                inputArea,
-                deadlineArea,
-                eventArea,
-                searchArea
+    /**
+     * Creates the message and image section.
+     */
+    private VBox createMessageArea() {
+        messageLabel = new Label();
+        messageLabel.setWrapText(true);
+        messageLabel.setMaxWidth(MESSAGE_WIDTH);
+
+        Image image = new Image(
+                getClass().getResourceAsStream("/images/carlo.png"));
+
+        ImageView imageView = new ImageView(image);
+        imageView.setFitWidth(IMAGE_SIZE);
+        imageView.setFitHeight(IMAGE_SIZE);
+        imageView.setPreserveRatio(true);
+
+        VBox messageArea = new VBox(SPACING, messageLabel, imageView);
+        messageArea.setAlignment(Pos.TOP_RIGHT);
+        return messageArea;
+    }
+
+    /**
+     * Creates the buttons for modifying the selected task.
+     */
+    private HBox createActionArea() {
+        return new HBox(
+                SPACING,
+                createButton("Mark done", this::markSelectedTask),
+                createButton("Unmark", this::unmarkSelectedTask),
+                createButton("Delete", this::deleteSelectedTask)
         );
+    }
 
-        VBox rightTopArea = new VBox(
-                10,
-                messageLabel,
-                imageView
-        );
+    /**
+     * Creates a text field that performs an action when Enter is pressed.
+     *
+     * @param prompt the placeholder text
+     * @param action the action to perform
+     * @return the configured text field
+     */
+    private TextField createTextField(String prompt, Runnable action) {
+        TextField field = new TextField();
+        field.setPromptText(prompt);
+        field.setOnAction(event -> action.run());
+        return field;
+    }
 
-        rightTopArea.setAlignment(Pos.TOP_RIGHT);
-
-        BorderPane topArea = new BorderPane();
-        topArea.setLeft(leftTopArea);
-        topArea.setRight(rightTopArea);
-
-        BorderPane.setMargin(rightTopArea, new Insets(10));
-        HBox actionArea = new HBox(
-                10,
-                markButton,
-                unmarkButton,
-                deleteButton
-        );
-
-        VBox bottomArea = new VBox(
-                10,
-                actionArea
-        );
-
-        BorderPane root = new BorderPane();
-        root.setTop(topArea);
-        root.setCenter(taskListView);
-        root.setBottom(bottomArea);
-
-        refreshTaskList();
-
-        Scene scene = new Scene(root, 800, 600);
-
-        stage.setTitle("Carlo");
-        stage.setScene(scene);
-        stage.show();
+    /**
+     * Creates a button that performs an action when clicked.
+     *
+     * @param text the button label
+     * @param action the action to perform
+     * @return the configured button
+     */
+    private Button createButton(String text, Runnable action) {
+        Button button = new Button(text);
+        button.setOnAction(event -> action.run());
+        return button;
     }
 
     /**
@@ -249,7 +267,7 @@ public class MainWindow extends Application {
      * Marks the selected task as completed.
      */
     private void markSelectedTask() {
-        int selectedIndex = taskListView.getSelectionModel().getSelectedIndex();
+        int selectedIndex = getSelectedTaskIndex();
 
         if (selectedIndex == -1) {
             messageLabel.setText(
@@ -271,7 +289,7 @@ public class MainWindow extends Application {
      * Marks the selected task as incomplete.
      */
     private void unmarkSelectedTask() {
-        int selectedIndex = taskListView.getSelectionModel().getSelectedIndex();
+        int selectedIndex = getSelectedTaskIndex();
 
         if (selectedIndex == -1) {
             messageLabel.setText(
@@ -293,7 +311,7 @@ public class MainWindow extends Application {
      * Deletes the selected task.
      */
     private void deleteSelectedTask() {
-        int selectedIndex = taskListView.getSelectionModel().getSelectedIndex();
+        int selectedIndex = getSelectedTaskIndex();
 
         if (selectedIndex == -1) {
             messageLabel.setText(
@@ -382,11 +400,7 @@ public class MainWindow extends Application {
         try {
             List<Task> matches = carlo.findTasks(searchInput.getText());
 
-            taskListView.setItems(FXCollections.observableArrayList(
-                    matches.stream()
-                            .map(Task::toString)
-                            .toList()
-            ));
+            displayTasks(matches);
 
             if (matches.isEmpty()) {
                 messageLabel.setText(
@@ -410,11 +424,7 @@ public class MainWindow extends Application {
             LocalDate date = CarloDateTime.parseDate(dateInput.getText());
             List<Task> matches = carlo.getTasksOnDate(date);
 
-            taskListView.setItems(FXCollections.observableArrayList(
-                    matches.stream()
-                            .map(Task::toString)
-                            .toList()
-            ));
+            displayTasks(matches);
 
             if (matches.isEmpty()) {
                 messageLabel.setText(
@@ -437,11 +447,30 @@ public class MainWindow extends Application {
      * Refreshes the displayed task list using Carlo's current tasks.
      */
     private void refreshTaskList() {
-        taskListView.setItems(FXCollections.observableArrayList(
-                carlo.getTasks()
-                        .stream()
-                        .map(Task::toString)
-                        .toList()
-        ));
+        displayTasks(carlo.getTasks());
+    }
+
+    /**
+     * Displays the given task objects.
+     *
+     * @param tasks the tasks to display
+     */
+    private void displayTasks(List<Task> tasks) {
+        taskListView.setItems(FXCollections.observableArrayList(tasks));
+    }
+
+    /**
+     * Returns the selected task's index in Carlo's full task list.
+     *
+     * @return the task index, or -1 if no stored task is selected
+     */
+    private int getSelectedTaskIndex() {
+        Task selectedTask = taskListView.getSelectionModel().getSelectedItem();
+
+        if (selectedTask == null) {
+            return -1;
+        }
+
+        return carlo.getTasks().indexOf(selectedTask);
     }
 }
