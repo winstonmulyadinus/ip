@@ -1,11 +1,11 @@
 package carlo.ui;
 
-import carlo.task.Task;
-
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Scanner;
+
+import carlo.task.Task;
 
 /**
  * Handles all interaction with the user: printing output to the console

@@ -1,20 +1,21 @@
 package carlo.storage;
 
-import carlo.exception.CarloException;
-import carlo.task.Deadline;
-import carlo.task.Event;
-import carlo.task.Task;
-import carlo.task.Todo;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import carlo.exception.CarloException;
+import carlo.task.Deadline;
+import carlo.task.Event;
+import carlo.task.Task;
+import carlo.task.Todo;
 
 /**
  * Tests for {@link Storage#load()} and {@link Storage#save(List)}.

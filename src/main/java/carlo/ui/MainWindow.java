@@ -416,27 +416,24 @@ public class MainWindow extends Application {
      * in the other two, so at most one task is selected overall.
      */
     private void setupSelectionClearing() {
-        todoListView.getSelectionModel().selectedItemProperty().addListener(
-                (observable, oldValue, newValue) -> {
-                    if (newValue != null) {
-                        deadlineListView.getSelectionModel().clearSelection();
-                        eventListView.getSelectionModel().clearSelection();
-                    }
-                });
-        deadlineListView.getSelectionModel().selectedItemProperty().addListener(
-                (observable, oldValue, newValue) -> {
-                    if (newValue != null) {
-                        todoListView.getSelectionModel().clearSelection();
-                        eventListView.getSelectionModel().clearSelection();
-                    }
-                });
-        eventListView.getSelectionModel().selectedItemProperty().addListener(
-                (observable, oldValue, newValue) -> {
-                    if (newValue != null) {
-                        todoListView.getSelectionModel().clearSelection();
-                        deadlineListView.getSelectionModel().clearSelection();
-                    }
-                });
+        todoListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue != null) {
+                deadlineListView.getSelectionModel().clearSelection();
+                eventListView.getSelectionModel().clearSelection();
+            }
+        });
+        deadlineListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue != null) {
+                todoListView.getSelectionModel().clearSelection();
+                eventListView.getSelectionModel().clearSelection();
+            }
+        });
+        eventListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue != null) {
+                todoListView.getSelectionModel().clearSelection();
+                deadlineListView.getSelectionModel().clearSelection();
+            }
+        });
     }
 
     /**
