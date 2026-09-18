@@ -1,6 +1,6 @@
 # Carlo User Guide
 
-![Carlo screenshot](docs\Ui.png)
+![Carlo screenshot](./Ui.png)
 
 Carlo is a **desktop app for managing your todos, deadlines, and events**, organised into
 three columns so you can see everything at a glance. It's operated by **filling in a form
