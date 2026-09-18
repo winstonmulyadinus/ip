@@ -9,13 +9,23 @@ import java.time.format.DateTimeParseException;
  * Represents a date, optionally paired with a time of day, that a user
  * typed in as part of a deadline or event.
  *
- * <p>Text in a recognised format (such as {@code yyyy-MM-dd} or
- * {@code yyyy-MM-dd HHmm}) is parsed into a {@link LocalDateTime} so it can
- * be displayed consistently and compared against other dates. Text that
- * does not match any recognised format -- such as {@code "today"} -- is
- * kept as-is, so free-form values keep working exactly as before.
+ * <p>Recognised text -- the relative keywords {@code today},
+ * {@code tomorrow}, and {@code yesterday}, or an explicit format such as
+ * {@code yyyy-MM-dd} or {@code yyyy-MM-dd HHmm} -- is parsed into a
+ * {@link LocalDateTime} so it can be displayed consistently and compared
+ * against other dates. Text that does not match any recognised format is
+ * kept as free-form text via {@link #isParsed()} returning {@code false},
+ * so callers that require an actual date (such as {@link Deadline} and
+ * {@link Event}) can detect and reject it.
  */
 public final class CarloDateTime {
+    /**
+     * A human-readable summary of the accepted date/time formats, for use
+     * in validation error messages.
+     */
+    public static final String FORMAT_HELP =
+            "Try yyyy-mm-dd, yyyy-mm-dd HHmm, or d/m/yyyy (or today/tomorrow/yesterday)!";
+
     private static final DateTimeFormatter[] DATE_TIME_INPUT_FORMATS = {
             DateTimeFormatter.ofPattern("yyyy-MM-dd HHmm"),
             DateTimeFormatter.ofPattern("yyyy-M-d HHmm"),
@@ -46,11 +56,12 @@ public final class CarloDateTime {
     }
 
     /**
-     * Parses user-entered text into a date/time. Recognises
-     * {@code yyyy-MM-dd}, {@code yyyy-MM-dd HHmm}, and {@code d/M/yyyy},
-     * with or without a trailing {@code HHmm} time. Text that does not
-     * match any of these, such as {@code "today"}, is kept as free-form
-     * text instead of causing an error.
+     * Parses user-entered text into a date/time. Recognises the relative
+     * keywords {@code today}, {@code tomorrow}, and {@code yesterday}
+     * (case-insensitive), as well as {@code yyyy-MM-dd},
+     * {@code yyyy-MM-dd HHmm}, and {@code d/M/yyyy}, with or without a
+     * trailing {@code HHmm} time. Text that does not match any of these is
+     * kept as free-form text instead of causing an error.
      *
      * <p>This same method is used both for text a user types in and for
      * text previously written to disk, since the on-disk format is one of
@@ -60,6 +71,11 @@ public final class CarloDateTime {
      * @return the parsed date/time, or free-form text if it could not be parsed
      */
     public static CarloDateTime parse(String text) {
+        LocalDate relativeDate = resolveRelativeKeyword(text.trim());
+        if (relativeDate != null) {
+            return new CarloDateTime(text, relativeDate.atStartOfDay(), false);
+        }
+
         for (DateTimeFormatter format : DATE_TIME_INPUT_FORMATS) {
             try {
                 CarloDateTime result = new CarloDateTime(
@@ -99,15 +115,9 @@ public final class CarloDateTime {
     public static LocalDate parseDate(String text) {
         String trimmed = text.trim();
 
-        switch (trimmed.toLowerCase()) {
-            case "today":
-                return LocalDate.now();
-            case "tomorrow":
-                return LocalDate.now().plusDays(1);
-            case "yesterday":
-                return LocalDate.now().minusDays(1);
-            default:
-                // fall through to the explicit date formats below
+        LocalDate relativeDate = resolveRelativeKeyword(trimmed);
+        if (relativeDate != null) {
+            return relativeDate;
         }
 
         for (DateTimeFormatter format : DATE_ONLY_INPUT_FORMATS) {
@@ -119,6 +129,27 @@ public final class CarloDateTime {
         }
 
         throw new DateTimeParseException("Unrecognised date format: " + text, text, 0);
+    }
+
+    /**
+     * Resolves the relative keywords {@code today}, {@code tomorrow}, and
+     * {@code yesterday} (case-insensitive) to an actual calendar date.
+     *
+     * @param trimmedText the already-trimmed text to check
+     * @return the resolved date, or {@code null} if {@code trimmedText} is
+     *         not one of the recognised keywords
+     */
+    private static LocalDate resolveRelativeKeyword(String trimmedText) {
+        switch (trimmedText.toLowerCase()) {
+            case "today":
+                return LocalDate.now();
+            case "tomorrow":
+                return LocalDate.now().plusDays(1);
+            case "yesterday":
+                return LocalDate.now().minusDays(1);
+            default:
+                return null;
+        }
     }
 
     /**

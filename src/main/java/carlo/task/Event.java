@@ -3,6 +3,8 @@ package carlo.task;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import carlo.exception.CarloException;
+
 /**
  * Represents a task that starts and ends at specified times.
  */
@@ -13,19 +15,36 @@ public class Event extends Task {
     /**
      * Creates an incomplete event.
      *
-     * <p>{@code startTime} and {@code endTime} are each parsed as a date
-     * (e.g. {@code 2019-12-02}) or a date and time (e.g.
-     * {@code 2019-12-02 1800}) where possible; text that does not match
-     * either format, such as {@code "today"}, is kept as entered.
+     * <p>{@code startTime} and {@code endTime} are each parsed as a
+     * relative keyword ({@code today}, {@code tomorrow}, {@code
+     * yesterday}), a date (e.g. {@code 2019-12-02}), or a date and time
+     * (e.g. {@code 2019-12-02 1800}).
      *
      * @param description text describing the event
      * @param startTime the event start time, as entered by the user
      * @param endTime the event end time, as entered by the user
+     * @throws CarloException if either time could not be understood as a
+     *         date/time, or if the start time is after the end time
      */
-    public Event(String description, String startTime, String endTime) {
+    public Event(String description, String startTime, String endTime) throws CarloException {
         super(description);
         this.startTime = CarloDateTime.parse(startTime);
         this.endTime = CarloDateTime.parse(endTime);
+
+        if (!this.startTime.isParsed()) {
+            throw new CarloException(
+                    "I couldn't understand '" + startTime + "' as a date/time! "
+                            + CarloDateTime.FORMAT_HELP);
+        }
+        if (!this.endTime.isParsed()) {
+            throw new CarloException(
+                    "I couldn't understand '" + endTime + "' as a date/time! "
+                            + CarloDateTime.FORMAT_HELP);
+        }
+        if (this.startTime.getDateTime().isAfter(this.endTime.getDateTime())) {
+            throw new CarloException(
+                    "This event's start time is after its end time... did you mix them up?");
+        }
     }
 
     /**

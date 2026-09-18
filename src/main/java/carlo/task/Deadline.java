@@ -1,5 +1,7 @@
 package carlo.task;
 
+import carlo.exception.CarloException;
+
 /**
  * Represents a task that must be completed by a specified time.
  */
@@ -9,17 +11,24 @@ public class Deadline extends Task {
     /**
      * Creates an incomplete deadline.
      *
-     * <p>{@code dueTime} is parsed as a date (e.g. {@code 2019-12-02}) or a
-     * date and time (e.g. {@code 2019-12-02 1800}) where possible; text
-     * that does not match either format, such as {@code "today"}, is kept
-     * as entered.
+     * <p>{@code dueTime} is parsed as a relative keyword ({@code today},
+     * {@code tomorrow}, {@code yesterday}), a date (e.g.
+     * {@code 2019-12-02}), or a date and time (e.g. {@code 2019-12-02
+     * 1800}).
      *
      * @param description text describing the task
      * @param dueTime the deadline, as entered by the user
+     * @throws CarloException if {@code dueTime} could not be understood as a date/time
      */
-    public Deadline(String description, String dueTime) {
+    public Deadline(String description, String dueTime) throws CarloException {
         super(description);
         this.dueTime = CarloDateTime.parse(dueTime);
+
+        if (!this.dueTime.isParsed()) {
+            throw new CarloException(
+                    "I couldn't understand '" + dueTime + "' as a date/time! "
+                            + CarloDateTime.FORMAT_HELP);
+        }
     }
 
     /**
