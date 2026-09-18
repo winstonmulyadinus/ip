@@ -5,7 +5,10 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import carlo.exception.CarloException;
 
 /**
  * Tests for {@link Event#occursOn(LocalDate)}.
@@ -13,52 +16,52 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class EventTest {
 
     @Test
-    void occursOn_dateWithinRange_returnsTrue() {
+    void occursOn_dateWithinRange_returnsTrue() throws CarloException {
         Event event = new Event("trip", "2019-12-01", "2019-12-05");
         assertTrue(event.occursOn(LocalDate.of(2019, 12, 3)));
     }
 
     @Test
-    void occursOn_dateEqualsStart_returnsTrue() {
+    void occursOn_dateEqualsStart_returnsTrue() throws CarloException {
         Event event = new Event("trip", "2019-12-01", "2019-12-05");
         assertTrue(event.occursOn(LocalDate.of(2019, 12, 1)));
     }
 
     @Test
-    void occursOn_dateEqualsEnd_returnsTrue() {
+    void occursOn_dateEqualsEnd_returnsTrue() throws CarloException {
         Event event = new Event("trip", "2019-12-01", "2019-12-05");
         assertTrue(event.occursOn(LocalDate.of(2019, 12, 5)));
     }
 
     @Test
-    void occursOn_dateBeforeStart_returnsFalse() {
+    void occursOn_dateBeforeStart_returnsFalse() throws CarloException {
         Event event = new Event("trip", "2019-12-01", "2019-12-05");
         assertFalse(event.occursOn(LocalDate.of(2019, 11, 30)));
     }
 
     @Test
-    void occursOn_dateAfterEnd_returnsFalse() {
+    void occursOn_dateAfterEnd_returnsFalse() throws CarloException {
         Event event = new Event("trip", "2019-12-01", "2019-12-05");
         assertFalse(event.occursOn(LocalDate.of(2019, 12, 6)));
     }
 
     @Test
-    void occursOn_onlyStartParseable_comparesAgainstStartOnly() {
-        Event event = new Event("trip", "2019-12-01", "whenever it ends");
-        assertTrue(event.occursOn(LocalDate.of(2019, 12, 1)));
-        assertFalse(event.occursOn(LocalDate.of(2019, 12, 2)));
+    void constructor_unparseableStartTime_throwsCarloException() {
+        assertThrows(CarloException.class, () -> new Event("trip", "whenever it starts", "2019-12-05"));
     }
 
     @Test
-    void occursOn_onlyEndParseable_comparesAgainstEndOnly() {
-        Event event = new Event("trip", "whenever it starts", "2019-12-05");
-        assertTrue(event.occursOn(LocalDate.of(2019, 12, 5)));
-        assertFalse(event.occursOn(LocalDate.of(2019, 12, 4)));
+    void constructor_unparseableEndTime_throwsCarloException() {
+        assertThrows(CarloException.class, () -> new Event("trip", "2019-12-01", "whenever it ends"));
     }
 
     @Test
-    void occursOn_neitherDateParseable_returnsFalse() {
-        Event event = new Event("trip", "someday", "some other day");
-        assertFalse(event.occursOn(LocalDate.of(2019, 12, 1)));
+    void constructor_neitherTimeParseable_throwsCarloException() {
+        assertThrows(CarloException.class, () -> new Event("trip", "someday", "some other day"));
+    }
+
+    @Test
+    void constructor_startTimeAfterEndTime_throwsCarloException() {
+        assertThrows(CarloException.class, () -> new Event("trip", "2019-12-05", "2019-12-01"));
     }
 }
