@@ -1,5 +1,6 @@
 package carlo.storage;
 
+import carlo.exception.CarloException;
 import carlo.task.Deadline;
 import carlo.task.Event;
 import carlo.task.Task;
@@ -28,7 +29,7 @@ class StorageTest {
     }
 
     @Test
-    void saveThenLoad_mixedTaskTypes_roundTripsCorrectly(@TempDir Path tempDir) {
+    void saveThenLoad_mixedTaskTypes_roundTripsCorrectly(@TempDir Path tempDir) throws CarloException {
         Path file = tempDir.resolve("data/carlo.txt");
         Storage storage = new Storage(file.toString());
 
