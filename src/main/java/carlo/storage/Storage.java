@@ -98,13 +98,15 @@ public class Storage {
     }
 
     /**
-     * Parses one line of the save file into a task.
+     * Parses one line of the save file into a task. This is the reverse of
+     * {@link Task#toFileFormat()}, which is also what makes undo possible:
+     * a task list saved as lines of text can be rebuilt with this method.
      *
      * @param line the raw line read from the save file
      * @return the task described by the line
      * @throws CarloException if the line does not match the expected format
      */
-    private Task parseLine(String line) throws CarloException {
+    public static Task parseLine(String line) throws CarloException {
         String[] parts = line.split("\\s*\\|\\s*", -1);
 
         if (parts.length < 3) {

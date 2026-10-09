@@ -199,6 +199,15 @@ public final class CarloDateTime {
     }
 
     /**
+     * Returns whether the user gave a time of day as well as a date.
+     *
+     * @return {@code true} if a time of day was given, {@code false} for a date only
+     */
+    public boolean hasTime() {
+        return hasTime;
+    }
+
+    /**
      * Returns whether this value was parsed and falls on the given calendar date.
      *
      * @param date the date to compare against
