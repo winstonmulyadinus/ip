@@ -2,7 +2,9 @@ package carlo;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,15 +25,43 @@ import carlo.ui.Ui;
  */
 public class Carlo {
     private static final String FILE_PATH = "./data/carlo.txt";
+    /** How many changes can be undone. Older snapshots are forgotten. */
+    private static final int MAX_UNDO_STEPS = 20;
 
     private final Storage storage;
     private final List<Task> tasks;
+    /**
+     * Snapshots of the task list taken just before each change, newest
+     * first. A {@link Deque} works as a stack here: {@code push} adds to
+     * the front and {@code pop} takes the most recent snapshot back off.
+     */
+    private final Deque<Snapshot> undoHistory = new ArrayDeque<>();
+
+    /**
+     * A saved copy of the task list, as lines in the save-file format,
+     * together with a description of the change that was about to happen.
+     *
+     * @param action what was about to be done, e.g. {@code deleting "essay"}
+     * @param lines the task list in save-file format
+     */
+    private record Snapshot(String action, List<String> lines) {
+    }
 
     /**
      * Creates a Carlo task manager and loads saved tasks from disk.
      */
     public Carlo() {
-        storage = new Storage(FILE_PATH);
+        this(FILE_PATH);
+    }
+
+    /**
+     * Creates a Carlo task manager that saves to the given file. Tests use
+     * this to work on a temporary file instead of the user's real tasks.
+     *
+     * @param filePath the path of the save file
+     */
+    public Carlo(String filePath) {
+        storage = new Storage(filePath);
         tasks = storage.load();
         assert storage != null : "Storage must be initialised";
         assert tasks != null : "Loading tasks must return a list";
@@ -48,6 +78,7 @@ public class Carlo {
             throw new CarloException("The todo description cannot be empty.");
         }
 
+        rememberState("adding \"" + description + "\"");
         tasks.add(new Todo(description));
         storage.save(tasks);
     }
@@ -71,7 +102,9 @@ public class Carlo {
             throw new CarloException("When is this deadline due?");
         }
 
-        tasks.add(new Deadline(description, dueTime));
+        Deadline deadline = new Deadline(description, dueTime);
+        rememberState("adding \"" + description + "\"");
+        tasks.add(deadline);
         storage.save(tasks);
     }
 
@@ -99,8 +132,120 @@ public class Carlo {
             throw new CarloException("When does this event end?");
         }
 
-        tasks.add(new Event(description, from, to));
+        Event event = new Event(description, from, to);
+        rememberState("adding \"" + description + "\"");
+        tasks.add(event);
         storage.save(tasks);
+    }
+
+    /**
+     * Adds a task described by a text command, such as
+     * {@code deadline essay /by 2026-10-15}, and saves the updated task list.
+     * This lets the GUI's command bar reuse the same parsing as the
+     * command-line version.
+     *
+     * @param command a {@code todo}, {@code deadline} or {@code event} command
+     * @return the task that was added
+     * @throws CarloException if the command is not an add command, or its details are invalid
+     */
+    public Task addTaskFromCommand(String command) throws CarloException {
+        Task task = parseTaskCommand(command);
+        rememberState("adding \"" + task.getDescription() + "\"");
+        tasks.add(task);
+        storage.save(tasks);
+        return task;
+    }
+
+    /**
+     * Replaces a task with a new version described by a text command,
+     * keeping it in the same position and keeping whether it was done.
+     *
+     * @param index the zero-based index of the task to edit
+     * @param command a {@code todo}, {@code deadline} or {@code event} command describing the new version
+     * @return the edited task
+     * @throws CarloException if the index is invalid, or the command is not valid
+     */
+    public Task editTask(int index, String command) throws CarloException {
+        validateTaskIndex(index);
+        Task oldTask = tasks.get(index);
+        Task newTask = parseTaskCommand(command);
+        if (oldTask.isDone()) {
+            newTask.markAsDone();
+        }
+
+        rememberState("editing \"" + oldTask.getDescription() + "\"");
+        tasks.set(index, newTask);
+        storage.save(tasks);
+        return newTask;
+    }
+
+    /**
+     * Returns whether there is a change that can be undone.
+     *
+     * @return {@code true} if {@link #undo()} would do something
+     */
+    public boolean canUndo() {
+        return !undoHistory.isEmpty();
+    }
+
+    /**
+     * Undoes the most recent change by restoring the task list as it was
+     * just before that change, then saves it.
+     *
+     * @return a description of the change that was undone, e.g. {@code deleting "essay"}
+     * @throws CarloException if there is nothing to undo
+     */
+    public String undo() throws CarloException {
+        if (undoHistory.isEmpty()) {
+            throw new CarloException("There's nothing to undo!");
+        }
+        Snapshot snapshot = undoHistory.pop();
+
+        tasks.clear();
+        for (String line : snapshot.lines()) {
+            // These lines were written by toFileFormat a moment ago, so they always parse.
+            tasks.add(Storage.parseLine(line));
+        }
+        storage.save(tasks);
+        return snapshot.action();
+    }
+
+    /**
+     * Saves a snapshot of the task list so the change about to be made can
+     * be undone. Call this after checking the change is valid, so that a
+     * failed command does not leave a pointless snapshot behind.
+     *
+     * @param action a description of the change about to be made
+     */
+    private void rememberState(String action) {
+        List<String> lines = tasks.stream().map(Task::toFileFormat).toList();
+        undoHistory.push(new Snapshot(action, lines));
+        if (undoHistory.size() > MAX_UNDO_STEPS) {
+            undoHistory.removeLast();
+        }
+    }
+
+    /**
+     * Turns a {@code todo}, {@code deadline} or {@code event} command into a
+     * task, without adding it to the list.
+     */
+    private static Task parseTaskCommand(String command) throws CarloException {
+        String trimmed = command.trim();
+        String keyword = trimmed.split("\\s+", 2)[0];
+
+        return switch (keyword) {
+            case "todo" -> {
+                String description = trimmed.substring("todo".length()).trim();
+                if (description.isEmpty()) {
+                    throw new CarloException("hmm... there's nothing to do...");
+                }
+                yield new Todo(description);
+            }
+            case "deadline" -> createDeadline(trimmed);
+            case "event" -> createEvent(trimmed);
+            default -> throw new CarloException("Start with todo, deadline or event, like "
+                    + "'deadline essay /by 2026-10-15' or 'event retreat /from 2026-10-20 /to 2026-10-22'.");
+        };
     }
 
     /**
@@ -111,6 +256,7 @@ public class Carlo {
      */
     public void markTask(int index) throws CarloException {
         validateTaskIndex(index);
+        rememberState("marking \"" + tasks.get(index).getDescription() + "\" as done");
         tasks.get(index).markAsDone();
         storage.save(tasks);
     }
@@ -123,6 +269,7 @@ public class Carlo {
      */
     public void unmarkTask(int index) throws CarloException {
         validateTaskIndex(index);
+        rememberState("marking \"" + tasks.get(index).getDescription() + "\" as not done");
         tasks.get(index).markAsNotDone();
         storage.save(tasks);
     }
@@ -135,6 +282,7 @@ public class Carlo {
      */
     public void deleteTask(int index) throws CarloException {
         validateTaskIndex(index);
+        rememberState("deleting \"" + tasks.get(index).getDescription() + "\"");
         tasks.remove(index);
         storage.save(tasks);
     }
