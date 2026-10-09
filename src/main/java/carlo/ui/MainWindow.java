@@ -192,6 +192,10 @@ public class MainWindow extends Application implements TaskListPane.TaskActions 
         if (command == null || command.isBlank()) {
             return false;
         }
+        if (command.trim().equalsIgnoreCase("help")) {
+            sidebar.say(voice.help());
+            return true;
+        }
         try {
             Task task = carlo.addTaskFromCommand(command);
             sidebar.say(voice.taskAdded(task, LocalDateTime.now()), true);

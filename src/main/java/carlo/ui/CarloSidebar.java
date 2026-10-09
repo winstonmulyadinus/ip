@@ -194,7 +194,7 @@ public class CarloSidebar extends VBox {
         formButton.setTooltip(new Tooltip("Add a task using a form (Ctrl+N)"));
         formButton.setOnAction(event -> onOpenForm.run());
 
-        Label hint = new Label("Tell Carlo something, or press + for a form");
+        Label hint = new Label("Type help for examples, or press + for a form");
         hint.getStyleClass().add("hint");
         hint.setWrapText(true);
 

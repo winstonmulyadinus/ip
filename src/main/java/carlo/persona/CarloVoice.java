@@ -145,6 +145,21 @@ public class CarloVoice {
     }
 
     /**
+     * Returns Carlo's explanation of how to add tasks, shown when the user types {@code help}.
+     *
+     * @return the help message
+     */
+    public CarloMessage help() {
+        return new CarloMessage("""
+                Type one of these below and press Enter:
+                • todo read chapter 4
+                • deadline essay /by 2026-10-15 1800
+                • event retreat /from 2026-10-20 /to 2026-10-22
+                Dates can be yyyy-mm-dd, d/m/yyyy, today or tomorrow, with an optional HHmm time. \
+                Or press + for a form!""", CarloMood.CHEERFUL);
+    }
+
+    /**
      * Returns Carlo's response to a task being edited.
      *
      * @param task the task after editing
